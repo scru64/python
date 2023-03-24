@@ -128,22 +128,22 @@ class Scru64Generator:
 
     The generator offers six different methods to generate a SCRU64 ID:
 
-    | Flavor                  | Timestamp | Thread- | On big clock rewind  |
-    | ----------------------- | --------- | ------- | -------------------- |
-    | generate                | Now       | Safe    | Rewinds state        |
-    | generate_no_rewind      | Now       | Safe    | Returns `None`       |
-    | generate_or_wait        | Now       | Safe    | Waits (blocking)     |
-    | generate_or_wait_async  | Now       | Safe    | Waits (non-blocking) |
-    | generate_core           | Argument  | Unsafe  | Rewinds state        |
-    | generate_core_no_rewind | Argument  | Unsafe  | Returns `None`       |
+    | Flavor                 | Timestamp | Thread- | On big clock rewind |
+    | ---------------------- | --------- | ------- | ------------------- |
+    | generate               | Now       | Safe    | Returns `None`      |
+    | generate_or_reset      | Now       | Safe    | Resets generator    |
+    | generate_or_sleep      | Now       | Safe    | Sleeps (blocking)   |
+    | generate_or_await      | Now       | Safe    | Sleeps (async)      |
+    | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
+    | generate_or_reset_core | Argument  | Unsafe  | Resets generator    |
 
-    Each method returns monotonically increasing IDs unless a timestamp provided is
-    significantly (by ~10 seconds or more) smaller than the one embedded in the
-    immediately preceding ID. If such a significant clock rollback is detected, (i) the
-    standard `generate` rewinds the generator state and returns a new ID based on the
-    current timestamp; (ii) `no_rewind` variants keep the state untouched and return
-    `None`; and, (iii) `or_wait` functions sleep and wait for the next timestamp tick.
-    `core` functions offer low-level thread-unsafe primitives.
+    All of these methods return monotonically increasing IDs unless a timestamp provided
+    is significantly (by default, approx. 10 seconds or more) smaller than the one
+    embedded in the immediately preceding ID. If such a significant clock rollback is
+    detected, (1) the `generate` (or_abort) method aborts and returns `None`; (2) the
+    `or_reset` variants reset the generator and return a new ID based on the given
+    timestamp; and, (3) the `or_sleep` and `or_await` methods sleep and wait for the
+    next timestamp tick. The `core` functions offer low-level thread-unsafe primitives.
     """
 
     def __init__(self, node_id: int, node_id_size: int) -> None:
@@ -196,66 +196,70 @@ class Scru64Generator:
 
         return (self.node_id() << self._counter_size) | counter
 
-    def generate(self) -> Scru64Id:
+    def generate(self) -> typing.Optional[Scru64Id]:
         """
-        Generates a new SCRU64 ID object from the current `timestamp`.
+        Generates a new SCRU64 ID object from the current `timestamp`, or returns `None`
+        upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core(int(timestamp * 1_000))
+            return self.generate_or_abort_core(int(timestamp * 1_000))
 
-    def generate_no_rewind(self) -> typing.Optional[Scru64Id]:
+    def generate_or_reset(self) -> Scru64Id:
         """
-        Generates a new SCRU64 ID object from the current `timestamp`, guaranteeing the
-        monotonic order of generated IDs despite a significant timestamp rollback.
+        Generates a new SCRU64 ID object from the current `timestamp`, or resets the
+        generator upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_core_no_rewind(int(timestamp * 1_000))
+            return self.generate_or_reset_core(int(timestamp * 1_000))
 
-    def generate_or_wait(self) -> Scru64Id:
+    def generate_or_sleep(self) -> Scru64Id:
         """
-        Returns a new SCRU64 ID object, or waits for one if not immediately available.
+        Returns a new SCRU64 ID object, or synchronously sleeps and waits for one if not
+        immediately available.
 
         See the Scru64Generator class documentation for the description.
         """
         DELAY = 64.0 / 1000.0
         while True:
-            value = self.generate_no_rewind()
+            value = self.generate()
             if value is not None:
                 return value
             else:
                 time.sleep(DELAY)
 
-    async def generate_or_wait_async(self) -> Scru64Id:
+    async def generate_or_await(self) -> Scru64Id:
         """
-        Returns a new SCRU64 ID object, or waits for one if not immediately available.
+        Returns a new SCRU64 ID object, or asynchronously sleeps and waits for one if
+        not immediately available.
 
         See the Scru64Generator class documentation for the description.
         """
         DELAY = 64.0 / 1000.0
         while True:
-            value = self.generate_no_rewind()
+            value = self.generate()
             if value is not None:
                 return value
             else:
                 await asyncio.sleep(DELAY)
 
-    def generate_core(self, unix_ts_ms: int) -> Scru64Id:
+    def generate_or_reset_core(self, unix_ts_ms: int) -> Scru64Id:
         """
-        Generates a new SCRU64 ID object from a Unix timestamp in milliseconds.
+        Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+        resets the generator upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
 
-        Unlike `generate()`, this method is NOT thread-safe. The generator object should
-        be protected from concurrent accesses using a mutex or other synchronization
-        mechanism to avoid race conditions.
+        Unlike `generate_or_reset()`, this method is NOT thread-safe. The generator
+        object should be protected from concurrent accesses using a mutex or other
+        synchronization mechanism to avoid race conditions.
         """
-        value = self.generate_core_no_rewind(unix_ts_ms)
+        value = self.generate_or_abort_core(unix_ts_ms)
         if value is not None:
             return value
         else:
@@ -263,17 +267,16 @@ class Scru64Generator:
             self._prev = Scru64Id.from_parts(unix_ts_ms >> 8, self._init_node_ctr())
             return self._prev
 
-    def generate_core_no_rewind(self, unix_ts_ms: int) -> typing.Optional[Scru64Id]:
+    def generate_or_abort_core(self, unix_ts_ms: int) -> typing.Optional[Scru64Id]:
         """
-        Generates a new SCRU64 ID object from a Unix timestamp in milliseconds,
-        guaranteeing the monotonic order of generated IDs despite a significant
-        timestamp rollback.
+        Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
+        returns `None` upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
 
-        Unlike `generate_no_rewind()`, this method is NOT thread-safe. The generator
-        object should be protected from concurrent accesses using a mutex or other
-        synchronization mechanism to avoid race conditions.
+        Unlike `generate()`, this method is NOT thread-safe. The generator object should
+        be protected from concurrent accesses using a mutex or other synchronization
+        mechanism to avoid race conditions.
         """
         ROLLBACK_ALLOWANCE = 40  # x256 milliseconds = ~10 seconds
 
@@ -320,7 +323,7 @@ def new() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
     """
-    return get_global_generator().generate_or_wait()
+    return get_global_generator().generate_or_sleep()
 
 
 def new_string() -> str:
@@ -335,7 +338,7 @@ async def new_async() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
     """
-    return await get_global_generator().generate_or_wait_async()
+    return await get_global_generator().generate_or_await()
 
 
 async def new_string_async() -> str:
@@ -343,4 +346,4 @@ async def new_string_async() -> str:
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
     """
-    return str(await get_global_generator().generate_or_wait_async())
+    return str(await get_global_generator().generate_or_await())
