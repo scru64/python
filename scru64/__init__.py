@@ -20,17 +20,17 @@ import threading
 import time
 import typing
 
-# Maximum valid value (i.e., `zzzzzzzzzzzz`).
-SCRU64_INT_MAX = 36**12 - 1
+# The maximum valid value (i.e., `zzzzzzzzzzzz`).
+MAX_SCRU64_INT = 36**12 - 1
 
-# Total size in bits of the `node_id` and `counter` fields.
+# The total size in bits of the `node_id` and `counter` fields.
 NODE_CTR_SIZE = 24
 
-# Maximum valid value of the `timestamp` field.
-TIMESTAMP_MAX = SCRU64_INT_MAX >> NODE_CTR_SIZE
+# The maximum valid value of the `timestamp` field.
+MAX_TIMESTAMP = MAX_SCRU64_INT >> NODE_CTR_SIZE
 
-# Maximum valid value of the combined `node_ctr` field.
-NODE_CTR_MAX = (1 << NODE_CTR_SIZE) - 1
+# The maximum valid value of the combined `node_ctr` field.
+MAX_NODE_CTR = (1 << NODE_CTR_SIZE) - 1
 
 # Digit characters used in the Base36 notation.
 DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
@@ -48,7 +48,7 @@ class Scru64Id:
     def __init__(self, int_value: int) -> None:
         """Creates an object from a 64-bit integer."""
         self._value = int_value
-        if not (0 <= int_value <= SCRU64_INT_MAX):
+        if not (0 <= int_value <= MAX_SCRU64_INT):
             raise ValueError("out of valid integer range")
 
     def __str__(self) -> str:
@@ -77,16 +77,16 @@ class Scru64Id:
         """
         Returns the `node_id` and `counter` field values combined as a single integer.
         """
-        return self._value & NODE_CTR_MAX
+        return self._value & MAX_NODE_CTR
 
     @classmethod
     def from_parts(cls, timestamp: int, node_ctr: int) -> Scru64Id:
         """
         Creates a value from the `timestamp` and the combined `node_ctr` field value.
         """
-        if timestamp < 0 or timestamp > TIMESTAMP_MAX:
+        if timestamp < 0 or timestamp > MAX_TIMESTAMP:
             raise ValueError("`timestamp` out of range")
-        if node_ctr < 0 or node_ctr > NODE_CTR_MAX:
+        if node_ctr < 0 or node_ctr > MAX_NODE_CTR:
             raise ValueError("`node_ctr` out of range")
         return cls(timestamp << NODE_CTR_SIZE | node_ctr)
 
@@ -296,7 +296,7 @@ class Scru64Generator:
                     prev_timestamp + 1, self._init_node_ctr()
                 )
         else:
-            # abort if clock moves back to unbearable extent
+            # abort if clock went backwards to unbearable extent
             return None
         return self._prev
 
