@@ -205,7 +205,7 @@ class Scru64Generator:
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_or_abort_core(int(timestamp * 1_000))
+            return self.generate_or_abort_core(int(timestamp * 1_000), 10_000)
 
     def generate_or_reset(self) -> Scru64Id:
         """
@@ -216,7 +216,7 @@ class Scru64Generator:
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
-            return self.generate_or_reset_core(int(timestamp * 1_000))
+            return self.generate_or_reset_core(int(timestamp * 1_000), 10_000)
 
     def generate_or_sleep(self) -> Scru64Id:
         """
@@ -248,18 +248,23 @@ class Scru64Generator:
             else:
                 await asyncio.sleep(DELAY)
 
-    def generate_or_reset_core(self, unix_ts_ms: int) -> Scru64Id:
+    def generate_or_reset_core(
+        self, unix_ts_ms: int, rollback_allowance: int
+    ) -> Scru64Id:
         """
         Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
         resets the generator upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
 
+        The `rollback_allowance` parameter specifies the amount of `unix_ts_ms` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
+
         Unlike `generate_or_reset()`, this method is NOT thread-safe. The generator
         object should be protected from concurrent accesses using a mutex or other
         synchronization mechanism to avoid race conditions.
         """
-        value = self.generate_or_abort_core(unix_ts_ms)
+        value = self.generate_or_abort_core(unix_ts_ms, rollback_allowance)
         if value is not None:
             return value
         else:
@@ -267,27 +272,33 @@ class Scru64Generator:
             self._prev = Scru64Id.from_parts(unix_ts_ms >> 8, self._init_node_ctr())
             return self._prev
 
-    def generate_or_abort_core(self, unix_ts_ms: int) -> typing.Optional[Scru64Id]:
+    def generate_or_abort_core(
+        self, unix_ts_ms: int, rollback_allowance: int
+    ) -> typing.Optional[Scru64Id]:
         """
         Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
         returns `None` upon significant timestamp rollback.
 
         See the Scru64Generator class documentation for the description.
 
+        The `rollback_allowance` parameter specifies the amount of `unix_ts_ms` rollback
+        that is considered significant. A suggested value is `10_000` (milliseconds).
+
         Unlike `generate()`, this method is NOT thread-safe. The generator object should
         be protected from concurrent accesses using a mutex or other synchronization
         mechanism to avoid race conditions.
         """
-        ROLLBACK_ALLOWANCE = 40  # x256 milliseconds = ~10 seconds
-
         timestamp = unix_ts_ms >> 8
+        allowance = rollback_allowance >> 8
         if timestamp <= 0:
             raise ValueError("`timestamp` out of range")
+        elif allowance < 0 or allowance >= (1 << 40):
+            raise ValueError("`rollback_allowance` out of reasonable range")
 
         prev_timestamp = self._prev.timestamp
         if timestamp > prev_timestamp:
             self._prev = Scru64Id.from_parts(timestamp, self._init_node_ctr())
-        elif timestamp + ROLLBACK_ALLOWANCE > prev_timestamp:
+        elif timestamp + allowance > prev_timestamp:
             # go on with previous timestamp if new one is not much smaller
             prev_node_ctr = self._prev.node_ctr
             counter_mask = (1 << self._counter_size) - 1
