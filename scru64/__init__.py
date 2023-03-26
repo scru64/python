@@ -5,8 +5,8 @@ from __future__ import annotations
 __all__ = [
     "new",
     "new_string",
-    "new_async",
-    "new_string_async",
+    "new_sync",
+    "new_string_sync",
     "Scru64Id",
     "Scru64Generator",
 ]
@@ -330,7 +330,7 @@ def get_global_generator() -> Scru64Generator:
     return global_generator
 
 
-def new() -> Scru64Id:
+def new_sync() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
@@ -340,7 +340,7 @@ def new() -> Scru64Id:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
-    `new_async` for the non-blocking equivalent.
+    `new` for the non-blocking equivalent.
 
     Raises:
         Exception if the global generator is not properly configured through the
@@ -349,7 +349,7 @@ def new() -> Scru64Id:
     return get_global_generator().generate_or_sleep()
 
 
-def new_string() -> str:
+def new_string_sync() -> str:
     """
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
@@ -360,16 +360,16 @@ def new_string() -> str:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
-    `new_string_async` for the non-blocking equivalent.
+    `new_string` for the non-blocking equivalent.
 
     Raises:
         Exception if the global generator is not properly configured through the
         environment variable.
     """
-    return str(new())
+    return str(new_sync())
 
 
-async def new_async() -> Scru64Id:
+async def new() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
@@ -387,7 +387,7 @@ async def new_async() -> Scru64Id:
     return await get_global_generator().generate_or_await()
 
 
-async def new_string_async() -> str:
+async def new_string() -> str:
     """
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
