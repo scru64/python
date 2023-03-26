@@ -171,7 +171,7 @@ class Scru64Generator:
         A node spec string consists of `node_id` and `node_id_size` separated by a slash
         (e.g., `"42/8"`, `"12345/16"`).
         """
-        m = re.fullmatch(r"([0-9]+)/([0-9]+)", node_spec)
+        m = re.fullmatch(r"([0-9]{1,10})/([0-9]{1,3})", node_spec)
         if m is None:
             raise ValueError("invalid `node_spec`; it looks like: `42/8`, `12345/16`")
         return cls(int(m[1], 10), int(m[2], 10))

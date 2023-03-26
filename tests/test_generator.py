@@ -37,6 +37,9 @@ class TestGenerator(unittest.TestCase):
         """Fails to initialize with invalid node spec string."""
         cases = [
             "",
+            "42",
+            "/8",
+            "42/",
             " 42/8",
             "42/8 ",
             " 42/8 ",
@@ -47,10 +50,13 @@ class TestGenerator(unittest.TestCase):
             "42/-8",
             "ab/8",
             "0x42/8",
+            "1/2/3",
             "0/0",
             "0/24",
             "8/1",
             "1024/8",
+            "00000000001/8",
+            "1/0016",
         ]
 
         for e in cases:

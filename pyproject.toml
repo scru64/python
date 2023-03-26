@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scru64"
-version = "0.2.0"
+version = "0.2.1"
 description = "SCRU64: Sortable, Clock-based, Realm-specifically Unique identifier"
 authors = ["LiosK <contact@mail.liosk.net>"]
 license = "Apache-2.0"
