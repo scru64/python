@@ -333,6 +333,18 @@ def get_global_generator() -> Scru64Generator:
 def new() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
+
+    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable. A node spec string consists of `node_id` and `node_id_size`
+    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+
+    This function usually returns a value immediately, but if not possible, it sleeps
+    and waits for the next timestamp tick. It employs blocking sleep to wait; see
+    `new_async` for the non-blocking equivalent.
+
+    Raises:
+        Exception if the global generator is not properly configured through the
+        environment variable.
     """
     return get_global_generator().generate_or_sleep()
 
@@ -341,6 +353,18 @@ def new_string() -> str:
     """
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
+
+    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable. A node spec string consists of `node_id` and `node_id_size`
+    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+
+    This function usually returns a value immediately, but if not possible, it sleeps
+    and waits for the next timestamp tick. It employs blocking sleep to wait; see
+    `new_string_async` for the non-blocking equivalent.
+
+    Raises:
+        Exception if the global generator is not properly configured through the
+        environment variable.
     """
     return str(new())
 
@@ -348,6 +372,17 @@ def new_string() -> str:
 async def new_async() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
+
+    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable. A node spec string consists of `node_id` and `node_id_size`
+    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+
+    This function usually returns a value immediately, but if not possible, it sleeps
+    and waits for the next timestamp tick.
+
+    Raises:
+        Exception if the global generator is not properly configured through the
+        environment variable.
     """
     return await get_global_generator().generate_or_await()
 
@@ -356,5 +391,16 @@ async def new_string_async() -> str:
     """
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
+
+    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable. A node spec string consists of `node_id` and `node_id_size`
+    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+
+    This function usually returns a value immediately, but if not possible, it sleeps
+    and waits for the next timestamp tick.
+
+    Raises:
+        Exception if the global generator is not properly configured through the
+        environment variable.
     """
     return str(await get_global_generator().generate_or_await())
