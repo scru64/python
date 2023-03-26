@@ -21,13 +21,13 @@ os.environ["SCRU64_NODE_SPEC"] = "42/8"
 import scru64
 
 # generate a new identifier object
-x = scru64.new()
+x = scru64.new_sync()
 print(x)  # e.g. "0u2r85hm2pt3"
 print(int(x))  # as a 64-bit unsigned integer
 
 
 # generate a textual representation directly
-print(scru64.new_string())  # e.g. "0u2r85hm2pt4"
+print(scru64.new_string_sync())  # e.g. "0u2r85hm2pt4"
 ```
 
 See [SCRU64 Specification] for details.
