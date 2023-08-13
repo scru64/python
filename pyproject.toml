@@ -11,8 +11,8 @@ homepage = "https://github.com/scru64/python"
 python = "^3.8"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
-mypy = "^1.1.1"
+black = "^23.7.0"
+mypy = "^1.5.0"
 
 [build-system]
 requires = ["poetry-core"]
