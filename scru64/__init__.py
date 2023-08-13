@@ -41,15 +41,22 @@ class Scru64Id:
 
     __slots__ = "_value"
 
-    def __int__(self) -> int:
-        """Returns the integer representation."""
-        return self._value
-
     def __init__(self, int_value: int) -> None:
         """Creates an object from a 64-bit integer."""
         self._value = int_value
         if not (0 <= int_value <= MAX_SCRU64_INT):
             raise ValueError("out of valid integer range")
+
+    def __int__(self) -> int:
+        """Returns the integer representation."""
+        return self._value
+
+    @classmethod
+    def from_str(cls, str_value: str) -> Scru64Id:
+        """Creates an object from a 12-digit string representation."""
+        if re.fullmatch(r"[0-9A-Za-z]{12}", str_value) is None:
+            raise ValueError("invalid string representation")
+        return cls(int(str_value, 36))
 
     def __str__(self) -> str:
         """Returns the 12-digit canonical string representation."""
@@ -61,11 +68,15 @@ class Scru64Id:
         return "".join(buffer)
 
     @classmethod
-    def from_str(cls, str_value: str) -> Scru64Id:
-        """Creates an object from a 12-digit string representation."""
-        if re.fullmatch(r"[0-9A-Za-z]{12}", str_value) is None:
-            raise ValueError("invalid string representation")
-        return cls(int(str_value, 36))
+    def from_parts(cls, timestamp: int, node_ctr: int) -> Scru64Id:
+        """
+        Creates a value from the `timestamp` and the combined `node_ctr` field value.
+        """
+        if timestamp < 0 or timestamp > MAX_TIMESTAMP:
+            raise ValueError("`timestamp` out of range")
+        if node_ctr < 0 or node_ctr > MAX_NODE_CTR:
+            raise ValueError("`node_ctr` out of range")
+        return cls(timestamp << NODE_CTR_SIZE | node_ctr)
 
     @property
     def timestamp(self) -> int:
@@ -78,17 +89,6 @@ class Scru64Id:
         Returns the `node_id` and `counter` field values combined as a single integer.
         """
         return self._value & MAX_NODE_CTR
-
-    @classmethod
-    def from_parts(cls, timestamp: int, node_ctr: int) -> Scru64Id:
-        """
-        Creates a value from the `timestamp` and the combined `node_ctr` field value.
-        """
-        if timestamp < 0 or timestamp > MAX_TIMESTAMP:
-            raise ValueError("`timestamp` out of range")
-        if node_ctr < 0 or node_ctr > MAX_NODE_CTR:
-            raise ValueError("`node_ctr` out of range")
-        return cls(timestamp << NODE_CTR_SIZE | node_ctr)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(0x{self._value:016X})"
@@ -315,19 +315,19 @@ class Scru64Generator:
         return self._prev
 
 
-global_generator: typing.Optional[Scru64Generator] = None
+global_gen: typing.Optional[Scru64Generator] = None
 
 
 def get_global_generator() -> Scru64Generator:
-    global global_generator
-    if global_generator is None:
+    global global_gen
+    if global_gen is None:
         node_spec = os.environ.get("SCRU64_NODE_SPEC")
         if node_spec is None:
             raise KeyError(
                 "scru64: could not read config from SCRU64_NODE_SPEC env var"
             )
-        global_generator = Scru64Generator.parse(node_spec)
-    return global_generator
+        global_gen = Scru64Generator.parse(node_spec)
+    return global_gen
 
 
 def new_sync() -> Scru64Id:
