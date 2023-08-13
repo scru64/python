@@ -9,6 +9,9 @@ __all__ = [
     "new_string_sync",
     "Scru64Id",
     "Scru64Generator",
+    "CounterMode",
+    "RenewContext",
+    "DefaultCounterMode",
 ]
 
 import asyncio
@@ -19,6 +22,7 @@ import re
 import threading
 import time
 import typing
+from dataclasses import dataclass
 
 # The maximum valid value (i.e., `zzzzzzzzzzzz`).
 MAX_SCRU64_INT = 36**12 - 1
@@ -146,7 +150,13 @@ class Scru64Generator:
     tick. The `core` functions offer low-level thread-unsafe primitives.
     """
 
-    def __init__(self, node_id: int, node_id_size: int) -> None:
+    def __init__(
+        self,
+        node_id: int,
+        node_id_size: int,
+        *,
+        counter_mode: typing.Optional[CounterMode] = None,
+    ) -> None:
         """
         Creates a generator with a node configuration.
 
@@ -161,6 +171,15 @@ class Scru64Generator:
         self._counter_size = NODE_CTR_SIZE - node_id_size
         self._prev = Scru64Id.from_parts(0, node_id << self._counter_size)
         self._lock = threading.Lock()
+
+        if counter_mode is not None:
+            self._counter_mode = counter_mode
+        else:
+            # reserve one overflow guard bit if `counter_size` is four or less
+            if self._counter_size <= 4:
+                self._counter_mode = DefaultCounterMode(1)
+            else:
+                self._counter_mode = DefaultCounterMode(0)
 
     @classmethod
     def parse(cls, node_spec: str) -> Scru64Generator:
@@ -184,17 +203,17 @@ class Scru64Generator:
         """Returns the size in bits of the `node_id` adopted by the generator."""
         return NODE_CTR_SIZE - self._counter_size
 
-    def _init_node_ctr(self) -> int:
+    def _renew_node_ctr(self, timestamp: int) -> int:
         """
         Calculates the combined `node_ctr` field value for the next `timestamp` tick.
         """
-        # initialize counter at `counter_size - 1`-bit random number
-        OVERFLOW_GUARD_SIZE = 1
-        counter = 0
-        if self._counter_size > OVERFLOW_GUARD_SIZE:
-            counter = random.getrandbits(self._counter_size - OVERFLOW_GUARD_SIZE)
+        node_id = self.node_id()
+        context = RenewContext(timestamp=timestamp, node_id=node_id)
+        counter = self._counter_mode.renew(self._counter_size, context)
+        if counter >= (1 << self._counter_size):
+            raise RuntimeError("illegal `CounterMode` implementation")
 
-        return (self.node_id() << self._counter_size) | counter
+        return (node_id << self._counter_size) | counter
 
     def generate(self) -> typing.Optional[Scru64Id]:
         """
@@ -269,7 +288,8 @@ class Scru64Generator:
             return value
         else:
             # reset state and resume
-            self._prev = Scru64Id.from_parts(unix_ts_ms >> 8, self._init_node_ctr())
+            timestamp = unix_ts_ms >> 8
+            self._prev = Scru64Id.from_parts(timestamp, self._renew_node_ctr(timestamp))
             return self._prev
 
     def generate_or_abort_core(
@@ -297,7 +317,7 @@ class Scru64Generator:
 
         prev_timestamp = self._prev.timestamp
         if timestamp > prev_timestamp:
-            self._prev = Scru64Id.from_parts(timestamp, self._init_node_ctr())
+            self._prev = Scru64Id.from_parts(timestamp, self._renew_node_ctr(timestamp))
         elif timestamp + allowance >= prev_timestamp:
             # go on with previous timestamp if new one is not much smaller
             prev_node_ctr = self._prev.node_ctr
@@ -307,12 +327,69 @@ class Scru64Generator:
             else:
                 # increment timestamp at counter overflow
                 self._prev = Scru64Id.from_parts(
-                    prev_timestamp + 1, self._init_node_ctr()
+                    prev_timestamp + 1, self._renew_node_ctr(prev_timestamp + 1)
                 )
         else:
             # abort if clock went backwards to unbearable extent
             return None
         return self._prev
+
+
+class CounterMode(typing.Protocol):
+    """
+    A protocol to customize the initial counter value for each new `timestamp`.
+
+    `Scru64Generator` calls `renew()` to obtain the initial counter value when the
+    `timestamp` field has changed since the immediately preceding ID. Types implementing
+    this protocol may apply their respective logic to calculate the initial counter
+    value.
+    """
+
+    def renew(self, counter_size: int, context: RenewContext) -> int:
+        """
+        Returns the next initial counter value of `counter_size` bits.
+
+        `Scru64Generator` passes the `counter_size` (from 1 to 23) and other context
+        information that may be useful for counter renewal. The returned value must be
+        within the range of `counter_size`-bit unsigned integer.
+        """
+
+
+@dataclass
+class RenewContext:
+    """
+    Represents the context information provided by `Scru64Generator` to
+    `CounterMode.renew()`.
+    """
+
+    timestamp: int
+    node_id: int
+
+
+class DefaultCounterMode:
+    """
+    The default "initialize a portion counter" strategy.
+
+    With this strategy, the counter is reset to a random number for each new `timestamp`
+    tick, but some specified leading bits are set to zero to reserve space as the
+    counter overflow guard.
+
+    Note that the random number generator employed is not cryptographically strong. This
+    mode does not pay for security because a small random number is insecure anyway.
+    """
+
+    def __init__(self, overflow_guard_size: int) -> None:
+        """Creates a new instance with the size (in bits) of overflow guard bits."""
+        if overflow_guard_size < 0:
+            raise ValueError("`overflow_guard_size` must be an unsigned integer")
+        self._overflow_guard_size = overflow_guard_size
+
+    def renew(self, counter_size: int, context: RenewContext) -> int:
+        """Returns the next initial counter value of `counter_size` bits."""
+        if counter_size > self._overflow_guard_size:
+            return random.getrandbits(counter_size - self._overflow_guard_size)
+        else:
+            return 0
 
 
 global_gen: typing.Optional[Scru64Generator] = None
