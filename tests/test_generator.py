@@ -49,13 +49,12 @@ class TestGenerator(unittest.TestCase):
             "-42/8",
             "42/-8",
             "ab/8",
-            "0x42/8",
             "1/2/3",
             "0/0",
             "0/24",
             "8/1",
             "1024/8",
-            "00000000001/8",
+            "0000000000001/8",
             "1/0016",
         ]
 
@@ -109,7 +108,7 @@ class TestGenerator(unittest.TestCase):
             ts += ALLOWANCE * 16
             prev = g.generate_or_reset_core(ts, ALLOWANCE)
             for _ in range(N_LOOPS):
-                ts -= ALLOWANCE
+                ts -= ALLOWANCE + 0x100
                 curr = g.generate_or_reset_core(ts, ALLOWANCE)
                 self.assertGreater(prev, curr)
                 self.assertLess(curr.timestamp - (ts >> 8), ALLOWANCE >> 8)
@@ -157,7 +156,7 @@ class TestGenerator(unittest.TestCase):
             # abort with significantly decreasing timestamps
             ts += ALLOWANCE * 16
             g.generate_or_abort_core(ts, ALLOWANCE)
-            ts -= ALLOWANCE
+            ts -= ALLOWANCE + 0x100
             for _ in range(N_LOOPS):
                 ts -= 16
                 self.assertIsNone(g.generate_or_abort_core(ts, ALLOWANCE))

@@ -138,12 +138,12 @@ class Scru64Generator:
     | generate_or_reset_core | Argument  | Unsafe  | Resets generator    |
 
     All of these methods return monotonically increasing IDs unless a timestamp provided
-    is significantly (by default, approx. 10 seconds or more) smaller than the one
-    embedded in the immediately preceding ID. If such a significant clock rollback is
-    detected, (1) the `generate` (or_abort) method aborts and returns `None`; (2) the
-    `or_reset` variants reset the generator and return a new ID based on the given
-    timestamp; and, (3) the `or_sleep` and `or_await` methods sleep and wait for the
-    next timestamp tick. The `core` functions offer low-level thread-unsafe primitives.
+    is significantly (by default, approx. 10 seconds) smaller than the one embedded in
+    the immediately preceding ID. If such a significant clock rollback is detected, (1)
+    the `generate` (or_abort) method aborts and returns `None`; (2) the `or_reset`
+    variants reset the generator and return a new ID based on the given timestamp; and,
+    (3) the `or_sleep` and `or_await` methods sleep and wait for the next timestamp
+    tick. The `core` functions offer low-level thread-unsafe primitives.
     """
 
     def __init__(self, node_id: int, node_id_size: int) -> None:
@@ -298,7 +298,7 @@ class Scru64Generator:
         prev_timestamp = self._prev.timestamp
         if timestamp > prev_timestamp:
             self._prev = Scru64Id.from_parts(timestamp, self._init_node_ctr())
-        elif timestamp + allowance > prev_timestamp:
+        elif timestamp + allowance >= prev_timestamp:
             # go on with previous timestamp if new one is not much smaller
             prev_node_ctr = self._prev.node_ctr
             counter_mask = (1 << self._counter_size) - 1
