@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import unittest
 
-from scru64 import DefaultCounterMode, RenewContext
+from scru64.counter_mode import DefaultCounterMode, RenewContext
 
 
 class TestCounterMode(unittest.TestCase):
