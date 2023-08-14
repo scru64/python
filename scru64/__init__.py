@@ -45,7 +45,12 @@ class Scru64Id:
     __slots__ = "_value"
 
     def __init__(self, int_value: int) -> None:
-        """Creates an object from a 64-bit integer."""
+        """
+        Creates an object from a 64-bit integer.
+
+        Raises:
+            `ValueError` if the argument is out of the valid value range.
+        """
         self._value = int_value
         if not (0 <= int_value <= MAX_SCRU64_INT):
             raise ValueError("out of valid integer range")
@@ -56,7 +61,12 @@ class Scru64Id:
 
     @classmethod
     def from_str(cls, str_value: str) -> Scru64Id:
-        """Creates an object from a 12-digit string representation."""
+        """
+        Creates an object from a 12-digit string representation.
+
+        Raises:
+            `ValueError` if the argument is not a valid string representation.
+        """
         if re.fullmatch(r"[0-9A-Za-z]{12}", str_value, flags=re.ASCII) is None:
             raise ValueError("invalid string representation")
         return cls(int(str_value, 36))
@@ -74,11 +84,16 @@ class Scru64Id:
     def from_parts(cls, timestamp: int, node_ctr: int) -> Scru64Id:
         """
         Creates a value from the `timestamp` and the combined `node_ctr` field value.
+
+        Raises:
+            `ValueError` if any argument is out of the valid value range.
         """
         if timestamp < 0 or timestamp > MAX_TIMESTAMP:
             raise ValueError("`timestamp` out of range")
         if node_ctr < 0 or node_ctr > MAX_NODE_CTR:
             raise ValueError("`node_ctr` out of range")
+
+        # upper bound check is necessary when `timestamp` is at max
         return cls(timestamp << NODE_CTR_SIZE | node_ctr)
 
     @property
@@ -212,7 +227,7 @@ class Scru64Generator:
         Generates a new SCRU64 ID object from the current `timestamp`, or returns `None`
         upon significant timestamp rollback.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
@@ -223,7 +238,7 @@ class Scru64Generator:
         Generates a new SCRU64 ID object from the current `timestamp`, or resets the
         generator upon significant timestamp rollback.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
@@ -234,7 +249,7 @@ class Scru64Generator:
         Returns a new SCRU64 ID object, or synchronously sleeps and waits for one if not
         immediately available.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
         """
         DELAY = 64.0 / 1000.0
         while True:
@@ -249,7 +264,7 @@ class Scru64Generator:
         Returns a new SCRU64 ID object, or asynchronously sleeps and waits for one if
         not immediately available.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
         """
         DELAY = 64.0 / 1000.0
         while True:
@@ -266,7 +281,7 @@ class Scru64Generator:
         Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
         resets the generator upon significant timestamp rollback.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
 
         The `rollback_allowance` parameter specifies the amount of `unix_ts_ms` rollback
         that is considered significant. A suggested value is `10_000` (milliseconds).
@@ -291,7 +306,7 @@ class Scru64Generator:
         Generates a new SCRU64 ID object from a Unix timestamp in milliseconds, or
         returns `None` upon significant timestamp rollback.
 
-        See the Scru64Generator class documentation for the description.
+        See the `Scru64Generator` class documentation for the description.
 
         The `rollback_allowance` parameter specifies the amount of `unix_ts_ms` rollback
         that is considered significant. A suggested value is `10_000` (milliseconds).
