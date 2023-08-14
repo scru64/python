@@ -27,7 +27,7 @@ class CounterMode(typing.Protocol):
         """
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class RenewContext:
     """
     Represents the context information provided by `Scru64Generator` to

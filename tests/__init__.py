@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ExampleId:
     text: str
     num: int
@@ -11,7 +11,7 @@ class ExampleId:
     node_ctr: int
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class ExampleNodeSpec:
     node_spec: str
     canonical: str
