@@ -9,6 +9,7 @@ __all__ = [
     "new_string_sync",
     "Scru64Id",
     "Scru64Generator",
+    "GlobalGenerator",
     "NodeSpec",
     "counter_mode",
 ]
@@ -433,38 +434,102 @@ class NodeSpec:
             return f"{self.node_id()}/{self._node_id_size}"
 
 
-global_gen: typing.Optional[Scru64Generator] = None
+class GlobalGenerator:
+    """
+    The singleton class that forwards supported method calls to the process-wide global
+    generator.
 
+    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable by default, and it raises an error if it fails to read a
+    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
+    when a generator method is first called. See also `NodeSpec` for the node spec
+    string format.
+    """
 
-def get_global_generator() -> Scru64Generator:
-    global global_gen
-    if global_gen is None:
-        node_spec = os.environ.get("SCRU64_NODE_SPEC")
-        if node_spec is None:
-            raise KeyError(
-                "scru64: could not read config from SCRU64_NODE_SPEC env var"
-            )
-        global_gen = Scru64Generator(node_spec)
-    return global_gen
+    _instance: typing.Optional[Scru64Generator] = None
+
+    @classmethod
+    def _get(cls) -> Scru64Generator:
+        if cls._instance is None:
+            node_spec = os.environ.get("SCRU64_NODE_SPEC")
+            if node_spec is None:
+                raise KeyError(
+                    "scru64: could not read config from SCRU64_NODE_SPEC env var"
+                )
+            cls._instance = Scru64Generator(node_spec)
+        return cls._instance
+
+    @classmethod
+    def initialize(cls, node_spec: typing.Union[str, NodeSpec]) -> bool:
+        """
+        Initializes the global generator, if not initialized, with the node spec passed.
+
+        This method tries to configure the global generator with the argument only when
+        the global generator is not yet initialized. Otherwise, it preserves the
+        existing configuration.
+
+        Raises:
+            `ValueError` if the `node_spec` is given in a string and could not be parsed
+            as a well-formed node spec string.
+        Returns:
+            `True` if this method configures the global generator or `False` if it
+            preserves the existing configuration.
+        """
+        if cls._instance is None:
+            cls._instance = Scru64Generator(node_spec)
+            return True
+        else:
+            return False
+
+    @classmethod
+    def generate(cls) -> typing.Optional[Scru64Id]:
+        """Calls `Scru64Generator.generate` of the global generator."""
+        return cls._get().generate()
+
+    @classmethod
+    def generate_or_sleep(cls) -> Scru64Id:
+        """Calls `Scru64Generator.generate_or_sleep` of the global generator."""
+        return cls._get().generate_or_sleep()
+
+    @classmethod
+    async def generate_or_await(cls) -> Scru64Id:
+        """Calls `Scru64Generator.generate_or_await` of the global generator."""
+        return await cls._get().generate_or_await()
+
+    @classmethod
+    def node_id(cls) -> int:
+        """Calls `Scru64Generator.node_id` of the global generator."""
+        return cls._get().node_id()
+
+    @classmethod
+    def node_id_size(cls) -> int:
+        """Calls `Scru64Generator.node_id_size` of the global generator."""
+        return cls._get().node_id_size()
+
+    @classmethod
+    def node_spec(cls) -> NodeSpec:
+        """Calls `Scru64Generator.node_spec` of the global generator."""
+        return cls._get().node_spec()
 
 
 def new_sync() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
-    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable. A node spec string consists of `node_id` and `node_id_size`
-    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable by default, and it raises an error if it fails to read a
+    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
+    when a generator method is first called. See also `NodeSpec` for the node spec
+    string format.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new` for the non-blocking equivalent.
 
     Raises:
-        Exception if the global generator is not properly configured through the
-        environment variable.
+        An error if the global generator is not properly configured.
     """
-    return get_global_generator().generate_or_sleep()
+    return GlobalGenerator.generate_or_sleep()
 
 
 def new_string_sync() -> str:
@@ -472,17 +537,18 @@ def new_string_sync() -> str:
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
 
-    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable. A node spec string consists of `node_id` and `node_id_size`
-    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable by default, and it raises an error if it fails to read a
+    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
+    when a generator method is first called. See also `NodeSpec` for the node spec
+    string format.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new_string` for the non-blocking equivalent.
 
     Raises:
-        Exception if the global generator is not properly configured through the
-        environment variable.
+        An error if the global generator is not properly configured.
     """
     return str(new_sync())
 
@@ -491,18 +557,19 @@ async def new() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
-    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable. A node spec string consists of `node_id` and `node_id_size`
-    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable by default, and it raises an error if it fails to read a
+    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
+    when a generator method is first called. See also `NodeSpec` for the node spec
+    string format.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
 
     Raises:
-        Exception if the global generator is not properly configured through the
-        environment variable.
+        An error if the global generator is not properly configured.
     """
-    return await get_global_generator().generate_or_await()
+    return await GlobalGenerator.generate_or_await()
 
 
 async def new_string() -> str:
@@ -510,15 +577,16 @@ async def new_string() -> str:
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
 
-    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable. A node spec string consists of `node_id` and `node_id_size`
-    separated by a slash (e.g., `"42/8"`, `"12345/16"`).
+    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
+    environment variable by default, and it raises an error if it fails to read a
+    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
+    when a generator method is first called. See also `NodeSpec` for the node spec
+    string format.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
 
     Raises:
-        Exception if the global generator is not properly configured through the
-        environment variable.
+        An error if the global generator is not properly configured.
     """
-    return str(await get_global_generator().generate_or_await())
+    return str(await GlobalGenerator.generate_or_await())
