@@ -56,7 +56,7 @@ class Scru64Id:
     @classmethod
     def from_str(cls, str_value: str) -> Scru64Id:
         """Creates an object from a 12-digit string representation."""
-        if re.fullmatch(r"[0-9A-Za-z]{12}", str_value) is None:
+        if re.fullmatch(r"[0-9A-Za-z]{12}", str_value, flags=re.ASCII) is None:
             raise ValueError("invalid string representation")
         return cls(int(str_value, 36))
 
@@ -188,7 +188,7 @@ class Scru64Generator:
         A node spec string consists of `node_id` and `node_id_size` separated by a slash
         (e.g., `"42/8"`, `"12345/16"`).
         """
-        m = re.fullmatch(r"([0-9]{1,10})/([0-9]{1,3})", node_spec)
+        m = re.fullmatch(r"([0-9]{1,10})/([0-9]{1,3})", node_spec, flags=re.ASCII)
         if m is None:
             raise ValueError("invalid `node_spec`; it looks like: `42/8`, `12345/16`")
         return cls(int(m[1], 10), int(m[2], 10))
