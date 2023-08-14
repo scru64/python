@@ -9,6 +9,7 @@ __all__ = [
     "new_string_sync",
     "Scru64Id",
     "Scru64Generator",
+    "NodeSpec",
     "counter_mode",
 ]
 
@@ -150,25 +151,26 @@ class Scru64Generator:
 
     def __init__(
         self,
-        node_id: int,
-        node_id_size: int,
+        node_spec: typing.Union[str, NodeSpec],
         *,
         counter_mode: typing.Optional[CounterMode] = None,
     ) -> None:
         """
-        Creates a generator with a node configuration.
+        Creates a new generator with the given node configuration and counter
+        initialization mode.
 
-        The `node_id` must fit in `node_id_size` bits, where `node_id_size` ranges from
-        1 to 23, inclusive.
+        The `node_spec` may be passed as a string or as a `NodeSpec` instance. See
+        `NodeSpec` for the node spec string format.
+
+        Raises:
+            `ValueError` if the `node_spec` is given in a string and could not be parsed
+            as a well-formed node spec string.
         """
-        if node_id_size <= 0 or node_id_size >= NODE_CTR_SIZE:
-            raise ValueError("`node_id_size` must range from 1 to 23")
-        if node_id < 0 or node_id >= (1 << node_id_size):
-            raise ValueError("`node_id` must fit in `node_id_size` bits")
+        if isinstance(node_spec, str):
+            node_spec = NodeSpec.parse(node_spec)
 
-        self._counter_size = NODE_CTR_SIZE - node_id_size
-        self._prev = Scru64Id.from_parts(0, node_id << self._counter_size)
-        self._lock = threading.Lock()
+        self._prev = node_spec._node_prev
+        self._counter_size = NODE_CTR_SIZE - node_spec.node_id_size()
 
         if counter_mode is not None:
             self._counter_mode = counter_mode
@@ -179,19 +181,7 @@ class Scru64Generator:
             else:
                 self._counter_mode = DefaultCounterMode(0)
 
-    @classmethod
-    def parse(cls, node_spec: str) -> Scru64Generator:
-        """
-        Creates a generator by parsing a node spec string that describes the node
-        configuration.
-
-        A node spec string consists of `node_id` and `node_id_size` separated by a slash
-        (e.g., `"42/8"`, `"12345/16"`).
-        """
-        m = re.fullmatch(r"([0-9]{1,10})/([0-9]{1,3})", node_spec, flags=re.ASCII)
-        if m is None:
-            raise ValueError("invalid `node_spec`; it looks like: `42/8`, `12345/16`")
-        return cls(int(m[1], 10), int(m[2], 10))
+        self._lock = threading.Lock()
 
     def node_id(self) -> int:
         """Returns the `node_id` of the generator."""
@@ -200,6 +190,10 @@ class Scru64Generator:
     def node_id_size(self) -> int:
         """Returns the size in bits of the `node_id` adopted by the generator."""
         return NODE_CTR_SIZE - self._counter_size
+
+    def node_spec(self) -> NodeSpec:
+        """Returns the node configuration specifier describing the generator state."""
+        return NodeSpec(self._prev, self.node_id_size())
 
     def _renew_node_ctr(self, timestamp: int) -> int:
         """
@@ -333,6 +327,97 @@ class Scru64Generator:
         return self._prev
 
 
+class NodeSpec:
+    """
+    Represents a node configuration specifier used to build a `Scru64Generator`.
+
+    A `NodeSpec` is usually expressed as a node spec string, which starts with a decimal
+    `node_id`, a hexadecimal `node_id` prefixed with `"0x"`, or a 12-digit `node_prev`
+    SCRU64 ID value, followed by a slash and a decimal `node_id_size` value ranging from
+    1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`). The first and second
+    forms create a fresh new generator with the given `node_id`, while the third form
+    constructs one that generates subsequent SCRU64 IDs to the `node_prev`.
+    """
+
+    def __init__(
+        self, node_id_or_prev: typing.Union[int, Scru64Id], node_id_size: int
+    ) -> None:
+        """
+        Creates an instance with `node_id` or `node_prev` and `node_id_size` values.
+
+        Raises:
+            `ValueError` if the `node_id_size` is zero or greater than 23 or if the
+            `node_id` does not fit in `node_id_size` bits.
+        """
+        if node_id_size <= 0 or node_id_size >= NODE_CTR_SIZE:
+            raise ValueError(f"`node_id_size` ({node_id_size}) must range from 1 to 23")
+        if not isinstance(node_id_or_prev, Scru64Id):
+            if node_id_or_prev < 0 or node_id_or_prev >= (1 << node_id_size):
+                raise ValueError(
+                    f"`node_id` ({node_id_or_prev}) must fit in `node_id_size` ({node_id_size}) bits"
+                )
+            counter_size = NODE_CTR_SIZE - node_id_size
+            node_id_or_prev = Scru64Id.from_parts(0, node_id_or_prev << counter_size)
+        self._node_prev: Scru64Id = node_id_or_prev
+        self._node_id_size: int = node_id_size
+
+    def node_id_size(self) -> int:
+        """Returns the `node_id_size` value."""
+        return self._node_id_size
+
+    def node_id(self) -> int:
+        """
+        Returns the `node_id` value given at instance creation or encoded in the
+        `node_prev` value.
+        """
+        counter_size = NODE_CTR_SIZE - self._node_id_size
+        return self._node_prev.node_ctr >> counter_size
+
+    def node_prev(self) -> typing.Optional[Scru64Id]:
+        """
+        Returns the `node_prev` value if `self` is constructed with one or `None`
+        otherwise.
+        """
+        if self._node_prev.timestamp > 0:
+            return self._node_prev
+        else:
+            return None
+
+    @classmethod
+    def parse(cls, node_spec: str) -> NodeSpec:
+        """
+        Creates an instance from a node spec string.
+
+        Raises:
+            `ValueError` if an invalid `node_spec` string is passed.
+        """
+        m = re.fullmatch(
+            r"(?:([0-9a-z]{12})|([0-9]{1,8})|0x([0-9a-f]{1,6}))\/([0-9]{1,3})",
+            node_spec,
+            flags=re.ASCII | re.IGNORECASE,
+        )
+        if m is None:
+            raise ValueError(
+                'could not parse string as node spec (expected: e.g., "42/8", "0xb00/12", "0u2r85hm2pt3/16")'
+            )
+        node_id_size = int(m[4], 10)
+        if m[1] is not None:
+            return cls(Scru64Id.from_str(m[1]), node_id_size)
+        elif m[2] is not None:
+            return cls(int(m[2], 10), node_id_size)
+        elif m[3] is not None:
+            return cls(int(m[3], 16), node_id_size)
+        else:
+            raise AssertionError("unreachable")
+
+    def __str__(self) -> str:
+        node_prev = self.node_prev()
+        if node_prev is not None:
+            return f"{node_prev}/{self._node_id_size}"
+        else:
+            return f"{self.node_id()}/{self._node_id_size}"
+
+
 global_gen: typing.Optional[Scru64Generator] = None
 
 
@@ -344,7 +429,7 @@ def get_global_generator() -> Scru64Generator:
             raise KeyError(
                 "scru64: could not read config from SCRU64_NODE_SPEC env var"
             )
-        global_gen = Scru64Generator.parse(node_spec)
+        global_gen = Scru64Generator(node_spec)
     return global_gen
 
 

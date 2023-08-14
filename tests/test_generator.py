@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import unittest
 
-from scru64 import Scru64Generator, Scru64Id
+from scru64 import NodeSpec, Scru64Generator, Scru64Id
 
 
 NODE_SPECS: list[tuple[int, int, str]] = [
@@ -25,11 +25,11 @@ class TestGenerator(unittest.TestCase):
     def test_constructor(self) -> None:
         """Initializes with node ID and size pair and node spec string."""
         for node_id, node_id_size, node_spec in NODE_SPECS:
-            x = Scru64Generator(node_id, node_id_size)
+            x = Scru64Generator(NodeSpec(node_id, node_id_size))
             self.assertEqual(x.node_id(), node_id)
             self.assertEqual(x.node_id_size(), node_id_size)
 
-            y = Scru64Generator.parse(node_spec)
+            y = Scru64Generator(node_spec)
             self.assertEqual(y.node_id(), node_id)
             self.assertEqual(y.node_id_size(), node_id_size)
 
@@ -60,7 +60,7 @@ class TestGenerator(unittest.TestCase):
 
         for e in cases:
             with self.assertRaises(Exception):
-                Scru64Generator.parse(e)
+                Scru64Generator(e)
 
     def _test_consecutive_pair(self, first: Scru64Id, second: Scru64Id) -> None:
         self.assertLess(first, second)
@@ -78,7 +78,7 @@ class TestGenerator(unittest.TestCase):
 
         for node_id, node_id_size, node_spec in NODE_SPECS:
             counter_size = 24 - node_id_size
-            g = Scru64Generator.parse(node_spec)
+            g = Scru64Generator(node_spec)
 
             # happy path
             ts = 1_577_836_800_000  # 2020-01-01
@@ -123,7 +123,7 @@ class TestGenerator(unittest.TestCase):
 
         for node_id, node_id_size, node_spec in NODE_SPECS:
             counter_size = 24 - node_id_size
-            g = Scru64Generator.parse(node_spec)
+            g = Scru64Generator(node_spec)
 
             # happy path
             ts = 1_577_836_800_000  # 2020-01-01
@@ -169,7 +169,7 @@ class TestGeneratorAsync(unittest.IsolatedAsyncioTestCase):
     async def test_clock_integration(self) -> None:
         """Embeds up-to-date timestamp."""
         for _, _, node_spec in NODE_SPECS:
-            g = Scru64Generator.parse(node_spec)
+            g = Scru64Generator(node_spec)
             ts_now = self.now()
             x = g.generate()
             assert x is not None
