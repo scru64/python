@@ -93,8 +93,6 @@ class Scru64Id:
             raise ValueError("`timestamp` out of range")
         if node_ctr < 0 or node_ctr > MAX_NODE_CTR:
             raise ValueError("`node_ctr` out of range")
-
-        # upper bound check is necessary when `timestamp` is at max
         return cls(timestamp << NODE_CTR_SIZE | node_ctr)
 
     @property
