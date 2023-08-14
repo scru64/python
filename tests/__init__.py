@@ -4,6 +4,14 @@ import dataclasses
 
 
 @dataclasses.dataclass
+class ExampleId:
+    text: str
+    num: int
+    timestamp: int
+    node_ctr: int
+
+
+@dataclasses.dataclass
 class ExampleNodeSpec:
     node_spec: str
     canonical: str
@@ -12,6 +20,142 @@ class ExampleNodeSpec:
     node_id_size: int
     node_prev: int
 
+
+EXAMPLE_IDS: list[ExampleId] = [
+    ExampleId(text="000000000000", num=0x0000000000000000, timestamp=0, node_ctr=0),
+    ExampleId(
+        text="00000009zldr", num=0x0000000000FFFFFF, timestamp=0, node_ctr=16777215
+    ),
+    ExampleId(
+        text="zzzzzzzq0em8", num=0x41C21CB8E0000000, timestamp=282429536480, node_ctr=0
+    ),
+    ExampleId(
+        text="zzzzzzzzzzzz",
+        num=0x41C21CB8E0FFFFFF,
+        timestamp=282429536480,
+        node_ctr=16777215,
+    ),
+    ExampleId(
+        text="0u375nxqh5cq",
+        num=0x0186D52BBE2A635A,
+        timestamp=6557084606,
+        node_ctr=2777946,
+    ),
+    ExampleId(
+        text="0u375nxqh5cr",
+        num=0x0186D52BBE2A635B,
+        timestamp=6557084606,
+        node_ctr=2777947,
+    ),
+    ExampleId(
+        text="0u375nxqh5cs",
+        num=0x0186D52BBE2A635C,
+        timestamp=6557084606,
+        node_ctr=2777948,
+    ),
+    ExampleId(
+        text="0u375nxqh5ct",
+        num=0x0186D52BBE2A635D,
+        timestamp=6557084606,
+        node_ctr=2777949,
+    ),
+    ExampleId(
+        text="0u375ny0glr0",
+        num=0x0186D52BBF2A4A1C,
+        timestamp=6557084607,
+        node_ctr=2771484,
+    ),
+    ExampleId(
+        text="0u375ny0glr1",
+        num=0x0186D52BBF2A4A1D,
+        timestamp=6557084607,
+        node_ctr=2771485,
+    ),
+    ExampleId(
+        text="0u375ny0glr2",
+        num=0x0186D52BBF2A4A1E,
+        timestamp=6557084607,
+        node_ctr=2771486,
+    ),
+    ExampleId(
+        text="0u375ny0glr3",
+        num=0x0186D52BBF2A4A1F,
+        timestamp=6557084607,
+        node_ctr=2771487,
+    ),
+    ExampleId(
+        text="jdsf1we3ui4f",
+        num=0x2367C8DFB2E6D23F,
+        timestamp=152065073074,
+        node_ctr=15127103,
+    ),
+    ExampleId(
+        text="j0afcjyfyi98",
+        num=0x22B86EAAD6B2F7EC,
+        timestamp=149123148502,
+        node_ctr=11728876,
+    ),
+    ExampleId(
+        text="ckzyfc271xsn",
+        num=0x16FC214296B29057,
+        timestamp=98719318678,
+        node_ctr=11702359,
+    ),
+    ExampleId(
+        text="t0vgc4c4b18n",
+        num=0x3504295BADC14F07,
+        timestamp=227703085997,
+        node_ctr=12668679,
+    ),
+    ExampleId(
+        text="mwcrtcubk7bp",
+        num=0x29D3C7553E748515,
+        timestamp=179646715198,
+        node_ctr=7636245,
+    ),
+    ExampleId(
+        text="g9ye86pgplu7",
+        num=0x1DBB24363718AECF,
+        timestamp=127693764151,
+        node_ctr=1617615,
+    ),
+    ExampleId(
+        text="qmez19t9oeir",
+        num=0x30A122FEF7CD6C83,
+        timestamp=208861855479,
+        node_ctr=13462659,
+    ),
+    ExampleId(
+        text="d81r595fq52m",
+        num=0x18278838F0660F2E,
+        timestamp=103742454000,
+        node_ctr=6688558,
+    ),
+    ExampleId(
+        text="v0rbps7ay8ks",
+        num=0x38A9E683BB4425EC,
+        timestamp=243368625083,
+        node_ctr=4466156,
+    ),
+    ExampleId(
+        text="z0jndjt42op2",
+        num=0x3FF596748EA77186,
+        timestamp=274703217806,
+        node_ctr=10973574,
+    ),
+    ExampleId(
+        text="f2bembkd4zrb",
+        num=0x1B844EB5D1AEBB07,
+        timestamp=118183867857,
+        node_ctr=11451143,
+    ),
+    ExampleId(
+        text="mkg0fd5p76pp",
+        num=0x29391373AB449ABD,
+        timestamp=177051235243,
+        node_ctr=4496061,
+    ),
+]
 
 EXAMPLE_NODE_SPECS: list[ExampleNodeSpec] = [
     ExampleNodeSpec(
