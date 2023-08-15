@@ -360,8 +360,8 @@ class NodeSpec:
         Creates an instance with `node_id` or `node_prev` and `node_id_size` values.
 
         Raises:
-            `ValueError` if the `node_id_size` is zero or greater than 23 or if the
-            `node_id` does not fit in `node_id_size` bits.
+            `ValueError` if the `node_id_size` is less than 1 or greater than 23 or if
+            the `node_id` does not fit in `node_id_size` bits.
         """
         if node_id_size <= 0 or node_id_size >= NODE_CTR_SIZE:
             raise ValueError(f"`node_id_size` ({node_id_size}) must range from 1 to 23")
@@ -434,7 +434,7 @@ class NodeSpec:
 
 class GlobalGenerator:
     """
-    The singleton class that forwards supported method calls to the process-wide global
+    The gateway class that forwards supported method calls to the process-wide global
     generator.
 
     The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
