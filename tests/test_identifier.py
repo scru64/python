@@ -50,6 +50,9 @@ class TestIdentifier(unittest.TestCase):
             self.assertGreater(curr, prev)
             self.assertGreaterEqual(curr, prev)
 
+            self.assertLess(int(prev), int(curr))
+            self.assertLess(str(prev), str(curr))
+
             prev = curr
 
     def test_convert_to(self) -> None:

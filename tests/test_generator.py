@@ -9,7 +9,7 @@ from . import EXAMPLE_NODE_SPECS
 
 
 class TestGenerator(unittest.TestCase):
-    def _test_consecutive_pair(self, first: Scru64Id, second: Scru64Id) -> None:
+    def _assert_consecutive(self, first: Scru64Id, second: Scru64Id) -> None:
         self.assertLess(first, second)
         if first.timestamp == second.timestamp:
             self.assertEqual(first.node_ctr + 1, second.node_ctr)
@@ -33,7 +33,7 @@ class TestGenerator(unittest.TestCase):
             for _ in range(N_LOOPS):
                 ts += 16
                 curr = g.generate_or_reset_core(ts, ALLOWANCE)
-                self._test_consecutive_pair(prev, curr)
+                self._assert_consecutive(prev, curr)
                 self.assertLess(curr.timestamp - (ts >> 8), ALLOWANCE >> 8)
                 self.assertEqual(curr.node_ctr >> counter_size, e.node_id)
 
@@ -45,7 +45,7 @@ class TestGenerator(unittest.TestCase):
             for _ in range(N_LOOPS):
                 ts -= 16
                 curr = g.generate_or_reset_core(ts, ALLOWANCE)
-                self._test_consecutive_pair(prev, curr)
+                self._assert_consecutive(prev, curr)
                 self.assertLess(curr.timestamp - (ts >> 8), ALLOWANCE >> 8)
                 self.assertEqual(curr.node_ctr >> counter_size, e.node_id)
 
@@ -80,7 +80,7 @@ class TestGenerator(unittest.TestCase):
                 ts += 16
                 curr = g.generate_or_abort_core(ts, ALLOWANCE)
                 assert curr is not None
-                self._test_consecutive_pair(prev, curr)
+                self._assert_consecutive(prev, curr)
                 self.assertLess(curr.timestamp - (ts >> 8), ALLOWANCE >> 8)
                 self.assertEqual(curr.node_ctr >> counter_size, e.node_id)
 
@@ -94,7 +94,7 @@ class TestGenerator(unittest.TestCase):
                 ts -= 16
                 curr = g.generate_or_abort_core(ts, ALLOWANCE)
                 assert curr is not None
-                self._test_consecutive_pair(prev, curr)
+                self._assert_consecutive(prev, curr)
                 self.assertLess(curr.timestamp - (ts >> 8), ALLOWANCE >> 8)
                 self.assertEqual(curr.node_ctr >> counter_size, e.node_id)
 

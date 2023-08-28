@@ -60,6 +60,7 @@ class TestNodeSpec(unittest.TestCase):
             "1024/8",
             "0000000000001/8",
             "1/0016",
+            "42/800",
         ]
 
         for e in cases:

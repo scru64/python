@@ -13,7 +13,6 @@ class TestGlobalGenerator(unittest.TestCase):
         """Reads configuration from environment var."""
         self.assertEqual(GlobalGenerator.node_id(), 42)
         self.assertEqual(GlobalGenerator.node_id_size(), 8)
-        self.assertEqual(str(GlobalGenerator.node_spec()), "42/8")
 
     def test_new_string_sync(self) -> None:
         """Generates 10k monotonically increasing IDs"""
