@@ -524,6 +524,8 @@ def new_sync() -> Scru64Id:
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new` for the non-blocking equivalent.
 
+    This function is thread-safe; multiple threads can call it concurrently.
+
     Raises:
         An error if the global generator is not properly configured.
     """
@@ -545,6 +547,8 @@ def new_string_sync() -> str:
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new_string` for the non-blocking equivalent.
 
+    This function is thread-safe; multiple threads can call it concurrently.
+
     Raises:
         An error if the global generator is not properly configured.
     """
@@ -563,6 +567,8 @@ async def new() -> Scru64Id:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
+
+    This function is thread-safe; multiple threads can call it concurrently.
 
     Raises:
         An error if the global generator is not properly configured.
@@ -583,6 +589,8 @@ async def new_string() -> str:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
+
+    This function is thread-safe; multiple threads can call it concurrently.
 
     Raises:
         An error if the global generator is not properly configured.
