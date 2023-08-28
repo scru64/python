@@ -445,16 +445,20 @@ class GlobalGenerator:
     """
 
     _instance: typing.Optional[Scru64Generator] = None
+    _lock: threading.Lock = threading.Lock()
 
     @classmethod
     def _get(cls) -> Scru64Generator:
+        # double-checked locking pattern
         if cls._instance is None:
-            node_spec = os.environ.get("SCRU64_NODE_SPEC")
-            if node_spec is None:
-                raise KeyError(
-                    "scru64: could not read config from SCRU64_NODE_SPEC env var"
-                )
-            cls._instance = Scru64Generator(node_spec)
+            with cls._lock:
+                if cls._instance is None:
+                    node_spec = os.environ.get("SCRU64_NODE_SPEC")
+                    if node_spec is None:
+                        raise KeyError(
+                            "scru64: could not read config from SCRU64_NODE_SPEC env var"
+                        )
+                    cls._instance = Scru64Generator(node_spec)
         return cls._instance
 
     @classmethod
@@ -473,11 +477,13 @@ class GlobalGenerator:
             `True` if this method configures the global generator or `False` if it
             preserves the existing configuration.
         """
+        # double-checked locking pattern
         if cls._instance is None:
-            cls._instance = Scru64Generator(node_spec)
-            return True
-        else:
-            return False
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = Scru64Generator(node_spec)
+                    return True
+        return False
 
     @classmethod
     def generate(cls) -> typing.Optional[Scru64Id]:
