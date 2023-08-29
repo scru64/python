@@ -50,7 +50,7 @@ class Scru64Id:
         Creates an object from a 64-bit integer.
 
         Raises:
-            `ValueError` if the argument is out of the valid value range.
+            `ValueError` if the argument is negative or larger than `36^12 - 1`.
         """
         self._value = int_value
         if not (0 <= int_value <= MAX_SCRU64_INT):
@@ -87,7 +87,8 @@ class Scru64Id:
         Creates a value from the `timestamp` and the combined `node_ctr` field value.
 
         Raises:
-            `ValueError` if any argument is out of the valid value range.
+            `ValueError` if any argument is negative or larger than their respective
+            maximum value (`36^12 / 2^24 - 1` and `2^24 - 1`, respectively).
         """
         if timestamp < 0 or timestamp > MAX_TIMESTAMP:
             raise ValueError("`timestamp` out of range")
@@ -189,7 +190,7 @@ class Scru64Generator:
         if counter_mode is not None:
             self._counter_mode = counter_mode
         else:
-            # reserve one overflow guard bit if `counter_size` is four or less
+            # reserve one overflow guard bit if `counter_size` is very small
             if self._counter_size <= 4:
                 self._counter_mode = DefaultCounterMode(1)
             else:
