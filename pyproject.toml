@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scru64"
-version = "0.3.1"
+version = "0.3.2"
 description = "SCRU64: Sortable, Clock-based, Realm-specifically Unique identifier"
 authors = ["LiosK <contact@mail.liosk.net>"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ python = "^3.8"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
-mypy = "^1.5.0"
+mypy = "^1.5.1"
 
 [build-system]
 requires = ["poetry-core"]
