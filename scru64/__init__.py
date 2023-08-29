@@ -50,7 +50,7 @@ class Scru64Id:
         Creates an object from a 64-bit integer.
 
         Raises:
-            `ValueError` if the argument is out of the valid value range.
+            `ValueError` if the argument is negative or larger than `36^12 - 1`.
         """
         self._value = int_value
         if not (0 <= int_value <= MAX_SCRU64_INT):
@@ -87,7 +87,8 @@ class Scru64Id:
         Creates a value from the `timestamp` and the combined `node_ctr` field value.
 
         Raises:
-            `ValueError` if any argument is out of the valid value range.
+            `ValueError` if any argument is negative or larger than their respective
+            maximum value (`36^12 / 2^24 - 1` and `2^24 - 1`, respectively).
         """
         if timestamp < 0 or timestamp > MAX_TIMESTAMP:
             raise ValueError("`timestamp` out of range")
@@ -189,7 +190,7 @@ class Scru64Generator:
         if counter_mode is not None:
             self._counter_mode = counter_mode
         else:
-            # reserve one overflow guard bit if `counter_size` is four or less
+            # reserve one overflow guard bit if `counter_size` is very small
             if self._counter_size <= 4:
                 self._counter_mode = DefaultCounterMode(1)
             else:
@@ -445,16 +446,20 @@ class GlobalGenerator:
     """
 
     _instance: typing.Optional[Scru64Generator] = None
+    _lock: threading.Lock = threading.Lock()
 
     @classmethod
     def _get(cls) -> Scru64Generator:
+        # double-checked locking pattern
         if cls._instance is None:
-            node_spec = os.environ.get("SCRU64_NODE_SPEC")
-            if node_spec is None:
-                raise KeyError(
-                    "scru64: could not read config from SCRU64_NODE_SPEC env var"
-                )
-            cls._instance = Scru64Generator(node_spec)
+            with cls._lock:
+                if cls._instance is None:
+                    node_spec = os.environ.get("SCRU64_NODE_SPEC")
+                    if node_spec is None:
+                        raise KeyError(
+                            "scru64: could not read config from SCRU64_NODE_SPEC env var"
+                        )
+                    cls._instance = Scru64Generator(node_spec)
         return cls._instance
 
     @classmethod
@@ -473,11 +478,13 @@ class GlobalGenerator:
             `True` if this method configures the global generator or `False` if it
             preserves the existing configuration.
         """
+        # double-checked locking pattern
         if cls._instance is None:
-            cls._instance = Scru64Generator(node_spec)
-            return True
-        else:
-            return False
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = Scru64Generator(node_spec)
+                    return True
+        return False
 
     @classmethod
     def generate(cls) -> typing.Optional[Scru64Id]:
@@ -524,6 +531,8 @@ def new_sync() -> Scru64Id:
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new` for the non-blocking equivalent.
 
+    This function is thread-safe; multiple threads can call it concurrently.
+
     Raises:
         An error if the global generator is not properly configured.
     """
@@ -545,6 +554,8 @@ def new_string_sync() -> str:
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
     `new_string` for the non-blocking equivalent.
 
+    This function is thread-safe; multiple threads can call it concurrently.
+
     Raises:
         An error if the global generator is not properly configured.
     """
@@ -563,6 +574,8 @@ async def new() -> Scru64Id:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
+
+    This function is thread-safe; multiple threads can call it concurrently.
 
     Raises:
         An error if the global generator is not properly configured.
@@ -583,6 +596,8 @@ async def new_string() -> str:
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
+
+    This function is thread-safe; multiple threads can call it concurrently.
 
     Raises:
         An error if the global generator is not properly configured.
