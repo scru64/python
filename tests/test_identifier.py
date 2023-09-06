@@ -108,6 +108,8 @@ class TestIdentifier(unittest.TestCase):
 
     def test_from_parts_error(self) -> None:
         """Rejects `MAX + 1` even if passed as pair of fields."""
+        max = 36**12 - 1
         with self.assertRaises(ValueError):
-            max = 36**12 - 1
             Scru64Id.from_parts(max >> 24, (max & 0xFF_FFFF) + 1)
+        with self.assertRaises(ValueError):
+            Scru64Id.from_parts((max >> 24) + 1, 0)

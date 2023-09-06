@@ -144,7 +144,7 @@ class Scru64Generator:
     """
     Represents a SCRU64 ID generator.
 
-    The generator offers six different methods to generate a SCRU64 ID:
+    The generator comes with several different methods that generate a SCRU64 ID:
 
     | Flavor                 | Timestamp | Thread- | On big clock rewind |
     | ---------------------- | --------- | ------- | ------------------- |
@@ -155,13 +155,21 @@ class Scru64Generator:
     | generate_or_abort_core | Argument  | Unsafe  | Returns `None`      |
     | generate_or_reset_core | Argument  | Unsafe  | Resets generator    |
 
-    All of these methods return monotonically increasing IDs unless a timestamp provided
-    is significantly (by default, approx. 10 seconds) smaller than the one embedded in
-    the immediately preceding ID. If such a significant clock rollback is detected, (1)
-    the `generate` (or_abort) method aborts and returns `None`; (2) the `or_reset`
-    variants reset the generator and return a new ID based on the given timestamp; and,
-    (3) the `or_sleep` and `or_await` methods sleep and wait for the next timestamp
-    tick. The `core` functions offer low-level thread-unsafe primitives.
+    All of these methods return a monotonically increasing ID by reusing the previous
+    `timestamp` even if the one provided is smaller than the immediately preceding ID's,
+    unless such a clock rollback is considered significant (by default, approx. 10
+    seconds). A clock rollback may also be detected when a generator has generated too
+    many IDs within a certain unit of time, because this implementation increments the
+    previous `timestamp` when `counter` reaches the limit to continue instant monotonic
+    generation. When a significant clock rollback is detected:
+
+    1.  `generate` (or_abort) methods abort and return `None` immediately.
+    2.  `or_reset` variants reset the generator and return a new ID based on the given
+        `timestamp`, breaking the increasing order of IDs.
+    3.  `or_sleep` and `or_await` methods sleep and wait for the next timestamp tick.
+
+    The `core` functions offer low-level thread-unsafe primitives to customize the
+    behavior.
     """
 
     def __init__(
@@ -347,11 +355,13 @@ class NodeSpec:
     Represents a node configuration specifier used to build a `Scru64Generator`.
 
     A `NodeSpec` is usually expressed as a node spec string, which starts with a decimal
-    `node_id`, a hexadecimal `node_id` prefixed with `"0x"`, or a 12-digit `node_prev`
+    `node_id`, a hexadecimal `node_id` prefixed by "0x", or a 12-digit `node_prev`
     SCRU64 ID value, followed by a slash and a decimal `node_id_size` value ranging from
-    1 to 23 (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`). The first and second
-    forms create a fresh new generator with the given `node_id`, while the third form
-    constructs one that generates subsequent SCRU64 IDs to the `node_prev`.
+    1 to 23 (e.g., "42/8", "0xb00/12", "0u2r85hm2pt3/16"). The first and second forms
+    create a fresh new generator with the given `node_id`, while the third form
+    constructs one that generates subsequent SCRU64 IDs to the `node_prev`. See also the
+    usage notes in the SCRU64 spec for tips and techniques to design node configurations:
+    https://github.com/scru64/spec#informative-usage-notes
     """
 
     def __init__(
@@ -438,11 +448,13 @@ class GlobalGenerator:
     The gateway class that forwards supported method calls to the process-wide global
     generator.
 
-    The global generator reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable by default, and it raises an error if it fails to read a
-    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
-    when a generator method is first called. See also `NodeSpec` for the node spec
-    string format.
+    By default, the global generator reads the node configuration from the
+    `SCRU64_NODE_SPEC` environment variable when a generator method is first called, and
+    it raises an error if it fails to do so. The node configuration is encoded in a node
+    spec string consisting of `node_id` and `node_id_size` integers separated by a slash
+    (e.g., "42/8", "0xb00/12"; see `NodeSpec` for details). You can configure the global
+    generator differently by calling `GlobalGenerator.initialize` before the default
+    initializer is triggered.
     """
 
     _instance: typing.Optional[Scru64Generator] = None
@@ -521,11 +533,13 @@ def new_sync() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
-    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable by default, and it raises an error if it fails to read a
-    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
-    when a generator method is first called. See also `NodeSpec` for the node spec
-    string format.
+    By default, the global generator reads the node configuration from the
+    `SCRU64_NODE_SPEC` environment variable when a generator method is first called, and
+    it raises an error if it fails to do so. The node configuration is encoded in a node
+    spec string consisting of `node_id` and `node_id_size` integers separated by a slash
+    (e.g., "42/8", "0xb00/12"; see `NodeSpec` for details). You can configure the global
+    generator differently by calling `GlobalGenerator.initialize` before the default
+    initializer is triggered.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
@@ -544,11 +558,13 @@ def new_string_sync() -> str:
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
 
-    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable by default, and it raises an error if it fails to read a
-    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
-    when a generator method is first called. See also `NodeSpec` for the node spec
-    string format.
+    By default, the global generator reads the node configuration from the
+    `SCRU64_NODE_SPEC` environment variable when a generator method is first called, and
+    it raises an error if it fails to do so. The node configuration is encoded in a node
+    spec string consisting of `node_id` and `node_id_size` integers separated by a slash
+    (e.g., "42/8", "0xb00/12"; see `NodeSpec` for details). You can configure the global
+    generator differently by calling `GlobalGenerator.initialize` before the default
+    initializer is triggered.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick. It employs blocking sleep to wait; see
@@ -566,11 +582,13 @@ async def new() -> Scru64Id:
     """
     Generates a new SCRU64 ID object using the global generator.
 
-    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable by default, and it raises an error if it fails to read a
-    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
-    when a generator method is first called. See also `NodeSpec` for the node spec
-    string format.
+    By default, the global generator reads the node configuration from the
+    `SCRU64_NODE_SPEC` environment variable when a generator method is first called, and
+    it raises an error if it fails to do so. The node configuration is encoded in a node
+    spec string consisting of `node_id` and `node_id_size` integers separated by a slash
+    (e.g., "42/8", "0xb00/12"; see `NodeSpec` for details). You can configure the global
+    generator differently by calling `GlobalGenerator.initialize` before the default
+    initializer is triggered.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.
@@ -588,11 +606,13 @@ async def new_string() -> str:
     Generates a new SCRU64 ID encoded in the 12-digit canonical string representation
     using the global generator.
 
-    The `GlobalGenerator` reads the node configuration from the `SCRU64_NODE_SPEC`
-    environment variable by default, and it raises an error if it fails to read a
-    well-formed node spec string (e.g., `"42/8"`, `"0xb00/12"`, `"0u2r85hm2pt3/16"`)
-    when a generator method is first called. See also `NodeSpec` for the node spec
-    string format.
+    By default, the global generator reads the node configuration from the
+    `SCRU64_NODE_SPEC` environment variable when a generator method is first called, and
+    it raises an error if it fails to do so. The node configuration is encoded in a node
+    spec string consisting of `node_id` and `node_id_size` integers separated by a slash
+    (e.g., "42/8", "0xb00/12"; see `NodeSpec` for details). You can configure the global
+    generator differently by calling `GlobalGenerator.initialize` before the default
+    initializer is triggered.
 
     This function usually returns a value immediately, but if not possible, it sleeps
     and waits for the next timestamp tick.

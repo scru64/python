@@ -16,10 +16,10 @@ class TestCounterMode(unittest.TestCase):
         may fail at a certain low probability.
         """
 
-        N = 256
+        N_LOOPS = 256
 
         # set margin based on binom dist 99.999999% confidence interval
-        margin = 5.730729 * math.sqrt(0.5 * 0.5 / N)
+        margin = 5.730729 * math.sqrt(0.5 * 0.5 / N_LOOPS)
 
         context = RenewContext(timestamp=0x0123_4567_89AB, node_id=0)
         for counter_size in range(1, 24):
@@ -28,7 +28,7 @@ class TestCounterMode(unittest.TestCase):
                 counts_by_pos = [0] * 24
 
                 c = DefaultCounterMode(overflow_guard_size)
-                for _ in range(N):
+                for _ in range(N_LOOPS):
                     n = c.renew(counter_size, context)
                     for i in range(24):
                         counts_by_pos[i] += n & 1
@@ -37,6 +37,6 @@ class TestCounterMode(unittest.TestCase):
 
                 filled = max(0, counter_size - overflow_guard_size)
                 for e in counts_by_pos[:filled]:
-                    self.assertLess(abs(e / N - 0.5), margin)
+                    self.assertLess(abs(e / N_LOOPS - 0.5), margin)
                 for e in counts_by_pos[filled:]:
                     self.assertEqual(e, 0)
