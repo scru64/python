@@ -247,6 +247,10 @@ class Scru64Generator:
         generator upon significant timestamp rollback.
 
         See the `Scru64Generator` class documentation for the description.
+
+        Note that this mode of generation is not recommended because rewinding
+        `timestamp` without changing `node_id` considerably increases the risk of
+        duplicate results.
         """
         with self._lock:
             timestamp = datetime.datetime.now().timestamp()
@@ -290,6 +294,10 @@ class Scru64Generator:
         resets the generator upon significant timestamp rollback.
 
         See the `Scru64Generator` class documentation for the description.
+
+        Note that this mode of generation is not recommended because rewinding
+        `timestamp` without changing `node_id` considerably increases the risk of
+        duplicate results.
 
         The `rollback_allowance` parameter specifies the amount of `unix_ts_ms` rollback
         that is considered significant. A suggested value is `10_000` (milliseconds).
