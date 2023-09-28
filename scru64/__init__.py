@@ -104,7 +104,8 @@ class Scru64Id:
     @property
     def node_ctr(self) -> int:
         """
-        Returns the `node_id` and `counter` field values combined as a single integer.
+        Returns the `node_id` and `counter` field values combined as a single 24-bit
+        integer.
         """
         return self._value & MAX_NODE_CTR
 
